@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 映射关系： -->
+<!-- namespace -> 接口全类名 -->
+<!-- id -> 接口方法名 -->
+<mapper namespace="com.itheima.mapper.UserMapper">
+    <insert id="insertUser">
+        insert into t_user(id, username, password, age, sex, email)
+        values (null, 'admin', '123456', 23, '男', 'zklhello@163.com')
+    </insert>
+
+    <update id="updateUser">
+        update t_user set username = '张三' where id = 4
+    </update>
+
+    <delete id="deleteUser">
+        delete from t_user where id = 4
+    </delete>
+
+    <select id="getUserById" resultType="User">
+        select * from t_user where id = 3
+    </select>
+
+    <select id="getUser" resultType="User">
+        select * from t_user where true
+    </select>
+
+</mapper>

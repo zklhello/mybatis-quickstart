@@ -1,0 +1,177 @@
+解决字段名与属性名不一致的情况：
+    1. 为字段名起别名，从而保持和属性名一致
+    2. 设置全局配置，将下划线_映射为驼峰
+        <settings>
+            <setting name="mapUnderscoreToCamelCase" value="true"/>
+        </settings>
+    3. 通过resultMap设置自定义的映射关系
+        <resultMap id="empResultMap" type="Emp">
+            <id property="eid" column="eid"/>
+            <result property="empName" column="emp_name"/>
+            <result property="age" column="age"/>
+            <result property="sex" column="sex"/>
+            <result property="email" column="email"/>
+        </resultMap>
+        - 解释：
+            - resultMap：设置自定义映射关系
+                - id：唯一标识，不能重复
+                - type：设置映射关系中的实体类类型
+            - id：设置主键的映射关系
+                - property：设置映射关系中的属性名，必须是type属性所设置的实体类类型中的属性名
+                - column：设置映射关系中的字段名，必须是sql语句查询出的字段名
+            - result：设置普通字段的映射关系
+                - property：设置映射关系中的属性名，必须是type属性所设置的实体类类型中的属性名
+                - column：设置映射关系中的字段名，必须是sql语句查询出的字段名
+
+=================================================================================================================
+
+
+处理多对一的映射关系：
+    1. 级联属性赋值
+        <resultMap id="empAndDeptResultMap" type="Emp">
+            <id property="eid" column="eid"/>
+            <result property="empName" column="emp_name"/>
+            <result property="age" column="age"/>
+            <result property="sex" column="sex"/>
+            <result property="email" column="email"/>
+            <result property="dept.did" column="did"/>
+            <result property="dept.deptName" column="dept_name"/>
+        </resultMap>
+
+    2. association
+        <resultMap id="empAndDeptResultMap" type="Emp">
+            <id property="eid" column="eid"/>
+            <result property="empName" column="emp_name"/>
+            <result property="age" column="age"/>
+            <result property="sex" column="sex"/>
+            <result property="email" column="email"/>
+            <association property="dept" javaType="Dept">
+                <id property="did" column="did"/>
+                <result property="deptName" column="dept_name"/>
+            </association>
+        </resultMap>
+        - 解释：
+            - association：处理多对一的映射关系
+                - property：需要处理多对一映射关系的属性名
+                - javaType：该属性的类型
+
+    3. 分布查询
+        第一步：在Emp映射文件中中进行查询，获取部门did
+            <resultMap id="empAndDeptByStepResultMap" type="Emp">
+                <id property="eid" column="eid"/>
+                <result property="empName" column="emp_name"/>
+                <result property="age" column="age"/>
+                <result property="sex" column="sex"/>
+                <result property="email" column="email"/>
+                <association property="dept"
+                             select="com.itheima.mapper.DeptMapper.selectEmpAndDeptByStepSecond"
+                             column="did"
+                             fetchType="eager"/>
+            </resultMap>
+            <select id="selectEmpAndDeptByStep" resultMap="empAndDeptByStepResultMap">
+                select * from t_emp where eid = #{eid}
+            </select>
+             - 解释association：
+                - property：需要处理多对一映射关系的属性名
+                - select：设置分步查询的sql的唯一标识（namespace.SQLId 或 mapper接口的全类名.方法名）
+                - column：设置分步查询的条件
+                - fetchType：当开启了全局的延迟加载之后，可通过此属性手动控制延迟加载的效果
+                  fetchType=“lazy/eager” lazy表示延迟加载，eager表示立即加载
+
+        第二步：然后在Dept的映射文件中根据第一步的did继续进行查询，获取该员工对应的部门信息
+            <select id="selectEmpAndDeptByStepSecond" resultType="Dept">
+                select * from t_dept where did = #{did}
+            </select>
+
+        分布查询的优点：
+            - 可以实现延迟加载，但是必须在核心配置文件中设置全局配置信息：
+                - <setting name="lazyLoadingEnabled" value="true"/>
+            - 解释：
+                - lazyLoadingEnabled：延迟加载的全局开关。当开启时，所有关联对象都会延迟加载。
+                - aggressiveLazyLoading：当开启时，任何方法的调用都会加载该对象的所有属性。否则，每个属性会按需加载。
+
+
+=================================================================================================================
+
+
+处理一对多的映射关系：
+    1. collection
+        <resultMap id="deptAndEmpResultMap" type="Dept">
+                <id property="did" column="did"/>
+                <result property="deptName" column="dept_name"/>
+                <collection property="emps" ofType="Emp">
+                    <id property="eid" column="eid"/>
+                    <result property="empName" column="emp_name"/>
+                    <result property="age" column="age"/>
+                    <result property="sex" column="sex"/>
+                    <result property="email" column="email"/>
+                </collection>
+            </resultMap>
+        - 解释：
+            - collection：处理一对多的映射关系
+            - ofType：表示该属性所对应的集合中存储数据的类型
+
+    2. 分布查询
+        第一步：在Dept映射文件中根据did获取对应部门信息
+            <resultMap id="deptAndEmpByStep" type="Dept">
+                    <id property="did" column="did"/>
+                    <result property="deptName" column="dept_name"/>
+                    <collection property="emps"
+                                select="com.itheima.mapper.EmpMapper.selectDeptAndEmpByStepSecond"
+                                column="did"
+                                fetchType="eager"/>
+            </resultMap>
+            <select id="selectDeptAndEmpByStep" resultMap="deptAndEmpByStep">
+                select * from t_dept where did = #{did}
+            </select>
+            - 解释collection：
+                - property：需要处理一对多映射关系的属性名
+                - select：设置分步查询的sql的唯一标识（namespace.SQLId 或 mapper接口的全类名.方法名）
+                - column：设置分步查询的条件
+                - fetchType：当开启了全局的延迟加载之后，可通过此属性手动控制延迟加载的效果
+                  fetchType=“lazy/eager” lazy表示延迟加载，eager表示立即加载
+
+        第二步：在Emp映射文件中，根据did查询对应的员工信息
+            <select id="selectDeptAndEmpByStepSecond" resultType="Emp">
+                select * from t_emp where did = #{did}
+            </select>
+
+
+=================================================================================================================
+
+
+动态SQL：
+    1. if
+        - 根据标签中test属性所对应的表达式决定标签中的表达式是否需要拼接到SQL中。
+            <if test="empName != null and empName != ''">
+                emp_name = #{empName} and
+            </if>
+
+    2. where
+        - 当where标签中有内容时，会自动生成where关键字，并且将内容前多余的and或or去掉。
+        - 当where标签中没有内容时，此时where标签没有任何效果，即SQL语句中不会出现关键字where。
+        - 注意：where标签不能将其中内容后面多余的and或or去掉。
+
+    3. trim
+        - 若标签中有内容时：
+            - prefix/suffix：将trim标签中内容前面或后面添加指定内容。
+            - suffixOverrides/prefixOverrides：将trim标签中内容前面或后面去掉指定内容。
+        - 若标签中没有内容时，trim标签会没有任何效果。
+
+    4. choose、when、otherwise
+        - 相当于if ... else if ... else
+        - choose是父标签，用于撑起结构
+        - when相当于if ... else if ... 用于条件选择
+        - otherwise相当于else
+
+    5. foreach
+        - collection：需要循环的数组或集合
+        - item：表示数组或集合中的每一个数据
+        - separator：循环体之间的分隔符
+        - open：foreach标签所循环的所有内容的开始符
+        - close：foreach标签所循环的所有内容的结束符
+
+    6. sql
+        - 设置SQL片段：<sql id="empColumns">eid, emp_name, age, sex, email</sql>
+        - 引用SQL片段：<include refid="empColumns"/>
+

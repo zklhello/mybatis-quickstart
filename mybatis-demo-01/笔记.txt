@@ -1,0 +1,111 @@
+
+MyBatis参数值的两种方式：${}、#{}
+    - ${} 本质是字符串拼接
+    - #{} 本质是占位符赋值
+
+
+MyBatis获取参数值的各种情况：
+    1.mapper接口中方法的参数为单个字面量类型
+        - 可以通过${}和#{}以任意的字符串获取参数值，但需要注意${}的单引号问题。
+        - 例如：
+            - select * from t_user where username = #{username}
+            - select * from t_user where username = '${username}'
+
+    2.mapper接口中方法的参数为多个字面量类型
+        - 这种情况，MyBatis会将这些参数放在一个map集合中，以两种方式进行存储：
+            ① 以arg0，arg1...为键，以参数为值
+            ② 以param1，param2...为键，以参数为值
+        - 因此只需要通过#{}和${}，以键的方式访问值即可，但需要注意${}的单引号问题。
+        - 例如：
+            - select * from t_user where username = #{param1} and password = #{param2}
+            - select * from t_user where username = '${arg0} and password = '${arg1}'
+
+    3.若mapper接口中方法的参数有多个时，可以手动将这些参数放在一个map中存储
+        - 只需要通过#{}和${}，以键的方式访问值即可（这里的键的名字是我们自定义的），但需要注意${}的单引号问题。
+        - 例如：
+            - Map集合：Map<String, Object> map = new HashMap<>();
+                      map.put("username", "tom");
+                      map.put("password", "tom");
+                      User user = mapper.checkLoginByMap(map);
+            - select * from t_user where username = #{username} and password = #{password}
+            - select * from t_user where username = '${username} and password = '${password}'
+
+    4.mapper接口中方法的参数是实体类类型的参数
+        - 只需要通过#{}和${}以属性的方式访问属性值即可，但需要注意${}的单引号问题。
+        - 例如：
+            - 实体类：User user = new User(null, "jane", "jane", 12, "女", "zklhello@163.com");
+                     int res = mapper.insertOneUser(user);
+            - insert into t_user values (null, #{username}, #{password}, #{age}, #{sex}, #{email})
+
+    5.使用@Param注解命名参数
+        - 这种情况，MyBatis会将这些参数放在一个map集合中，以两种方式进行存储：
+            ① 以@Param注解的值为键，以参数为值
+            ② 以param1，param2...为键，以参数为值
+        - 因此只需要通过#{}和${}，以键的方式访问值即可，但需要注意${}的单引号问题。
+        - 例如：
+            - mapper接口中：User checkLoginByParam(@Param("username") String username, @Param("password") String password);
+            - select * from t_user where username = #{username} and password = #{password}
+
+
+================================================================================================================
+
+
+MyBatis的各种查询功能：
+    1.若查询出的数据只有一条
+        - 可以通过实体类对象接收
+        - 可以通过List集合接收
+        - 可以通过Map集合接收，结果例如：
+            - {password=jane, sex=女, id=5, age=12, email=zklhello@163.com, username=jane}
+
+    2.若查询出的数据有多条
+        - 可以通过List集合接收
+        - 可以通过Map类型的List集合接收，结果例如：
+            - [{password=tom, sex=男, id=2, age=23, email=zklhello@163.com, username=tom}, {password=jerry, sex=男, id=3, age=23, email=zklhello@163.com, username=jerry}, {password=jane, sex=女, id=5, age=12, email=zklhello@163.com, username=jane}]
+        - 可以再mapper接口中的方法上添加注解@MapKey，此时就可以将每条数据转换的map集合作为值，以某个字段的值作为键，放在同一个Map集合中，结果例如：
+            - {2={password=tom, sex=男, id=2, age=23, email=zklhello@163.com, username=tom}, 3={password=jerry, sex=男, id=3, age=23, email=zklhello@163.com, username=jerry}, 5={password=jane, sex=女, id=5, age=12, email=zklhello@163.com, username=jane}}
+        - 注意：一定不能通过实体类对象接受，此时会抛出异常TooManyResultsException
+
+
+MyBatis中设置了默认的类型别名，例如（常用）：
+    - java.lang.Integer -> int, integer
+    - int               -> _int, _integer
+    - java.lang.String  -> string
+    - java.util.Map     -> map
+
+
+================================================================================================================
+
+
+特殊SQL的执行：
+    1.模糊查询
+        - 正确：
+            - select * from t_user where username like '%${username}%'
+            - select * from t_user where username like concat('%', #{username}, '%')
+            - select * from t_user where username like "%"#{username}"%"
+        - 错误：
+            - select * from t_user where username like '%#{username}%'
+            - 解释：因为使用#{}，会将占位符?当做字符串的一部分，从而导致sql语句接收不到参数，从而产生错误。
+
+    2.批量删除
+        - 正确：
+            - delete from t_user where id in (${ids})
+        - 错误：
+            - delete from t_user where id in (#{ids})
+            - 解释：使用#{}，会自动添加引号，变成 delete from t_user where id in (‘1,2,3’)，导致sql语句出错。
+
+    3.动态设置表名
+        - 正确：
+            - select * from ${tableName}
+        - 错误：
+            - select * from #{tableName}
+            - 解释：使用#{}，会自动添加引号，但是sql语句中，表名是不能加引号的，所以使用#{}会导致sql语句出错。
+
+    4.添加功能获取自增的主键
+        - <insert id="insertUser" useGeneratedKeys="true" keyProperty="id">
+              insert into t_user values (null, #{username}, #{password}, #{age}, #{sex}, #{email})
+          </insert>
+        - 解释：
+            - useGeneratedKeys：设置当前标签中的sql使用了自增的主键。
+            - keyProperty：将自增的主键的值赋值给传输到映射文件中的参数的某个属性。
+
+

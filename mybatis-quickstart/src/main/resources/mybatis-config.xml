@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!--
+    MyBatis核心配置文件中，标签的顺序: properties?,settings?,typeAliases?,typeHandlers?,
+                                   objectFactory?,objectWrapperFactory?,reflectorFactory?,
+                                   plugins?,environments?,databaseIdProvider?,mappers? -->
+
+    <!-- 引入properties配置文件 -->
+    <properties resource="jdbc.properties"/>
+
+    <typeAliases>
+        <!-- 别名不区别大小写，默认为类名 -->
+        <typeAlias type="com.itheima.pojo.User" alias="User"/>
+
+        <!-- 以包为单位，对包下的所有的实体类起别名，默认是类名，不区分大小写 -->
+        <!-- <package name="com.itheima.pojo"/> -->
+    </typeAliases>
+
+    <!-- 配置连接数据库的环境 -->
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="${jdbc.driver}"/>
+                <property name="url" value="${jdbc.url}"/>
+                <property name="username" value="${jdbc.username}"/>
+                <property name="password" value="${jdbc.password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <!-- 引入映射文件 -->
+    <mappers>
+        <!-- <mapper resource="mappers/UserMapper.xml"/> -->
+
+        <!--
+            以包为单位引入映射文件
+            要求：
+                1.mapper接口所在的包要和映射文件所在的包一致
+                2.mapper接口要和映射文件的名字一致
+         -->
+        <package name="com.itheima.mapper"/>
+    </mappers>
+</configuration>
